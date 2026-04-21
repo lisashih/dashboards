@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>廣告投放儀表板</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<style>
+:root{color-scheme:light;--bg:#f5f7fa;--panel:#ffffff;--border:#e5e7eb;--muted:#6b7280;--text:#111827;--accent:#2563eb;--accent-soft:#dbeafe;--good:#10b981;--bad:#ef4444;--warn:#f59e0b;--asa:#8b5cf6;--gkw:#2563eb;--pmax:#10b981;}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",Roboto,sans-serif;font-size:14px;line-height:1.4}
+.header{background:#fff;border-bottom:1px solid var(--border);padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.header h1{font-size:18px;margin:0;font-weight:700}
+.header .subtitle{color:var(--muted);font-size:12px}
+.upload-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:#f8fafc;transition:all .15s;font-size:13px}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-soft)}
+.upload-zone.drag{border-color:var(--accent);background:var(--accent-soft)}
+.upload-zone input{display:none}
+.file-info{font-size:12px;color:var(--muted)}
+.btn{border:1px solid var(--border);background:#fff;color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit}
+.btn:hover{background:#f3f4f6}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#1d4ed8}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn-ghost:hover{color:var(--text);background:#f3f4f6}
+.tabs{display:flex;gap:2px;background:#fff;border-bottom:1px solid var(--border);padding:0 22px}
+.tab{padding:12px 18px;cursor:pointer;border-bottom:2px solid transparent;font-weight:500;color:var(--muted);font-size:14px;user-select:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.controls{background:#fff;border-bottom:1px solid var(--border);padding:12px 22px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.control-group{display:flex;align-items:center;gap:6px}
+.control-group label{font-size:12px;color:var(--muted);font-weight:500}
+.control-group input[type=date],.control-group select{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit;background:#fff}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);background:#fff;padding:4px 10px;border-radius:999px;cursor:pointer;font-size:12px;color:var(--muted)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chip.warn{color:var(--warn);border-color:#fde68a}
+.chip.warn.active{background:var(--warn);color:#fff;border-color:var(--warn)}
+.main{padding:22px;max-width:1600px;margin:0 auto}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px}
+.panel h2{margin:0 0 12px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.panel h2 .sub{font-size:12px;color:var(--muted);font-weight:400}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.kpi{background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:14px}
+.kpi .label{font-size:12px;color:var(--muted);margin-bottom:4px}
+.kpi .value{font-size:22px;font-weight:700;color:var(--text);line-height:1.2}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi .delta{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.delta.up{background:#d1fae5;color:#065f46}
+.delta.down{background:#fee2e2;color:#991b1b}
+.delta.neu{background:#f3f4f6;color:#374151}
+.budget-list{display:grid;grid-template-columns:1fr;gap:12px}
+.budget-row{display:grid;grid-template-columns:160px 1fr 140px;gap:14px;align-items:center}
+.budget-label{font-size:13px;font-weight:500}
+.budget-label .sub{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+.bar{background:#f1f5f9;border-radius:999px;height:22px;position:relative;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:999px;transition:width .4s}
+.bar-fill.over{background:linear-gradient(90deg,#ef4444,#f87171)}
+.bar-fill.warn{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.bar-pace{position:absolute;top:-2px;bottom:-2px;width:2px;background:#111827;z-index:2}
+.bar-pace::after{content:"";position:absolute;top:-4px;left:-4px;width:10px;height:10px;background:#111827;border-radius:999px}
+.bar-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0f172a;mix-blend-mode:multiply}
+.budget-right{font-size:12px;color:var(--muted);text-align:right}
+.budget-right .big{display:block;font-size:13px;color:var(--text);font-weight:600}
+.chart-wrap{position:relative;height:280px}
+.chart-wrap.small{height:220px}
+.two-col{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+@media(max-width:1100px){.two-col{grid-template-columns:1fr}}
+table.data{width:100%;border-collapse:collapse;font-size:13px}
+table.data th,table.data td{padding:8px 10px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+table.data th{background:#f8fafc;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none;position:sticky;top:0}
+table.data th:hover{color:var(--text)}
+table.data th.sort-asc::after{content:" ▲"}
+table.data th.sort-desc::after{content:" ▼"}
+table.data td:first-child,table.data th:first-child{text-align:left}
+table.data td:nth-child(2),table.data th:nth-child(2){text-align:left}
+table.data tbody tr:hover{background:#f8fafc}
+.table-wrap{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:8px}
+.table-wrap.compact{max-height:320px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.tag-asa{background:#ede9fe;color:#5b21b6}
+.tag-gkw{background:#dbeafe;color:#1e40af}
+.tag-pmax{background:#d1fae5;color:#065f46}
+.tag-danger{background:#fee2e2;color:#991b1b}
+.tag-bucket{background:#f3f4f6;color:#374151}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty h3{color:var(--text);margin:0 0 8px}
+.empty p{margin:4px 0;font-size:13px}
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.compare-box{background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:14px}
+.compare-box .title{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500}
+.compare-box .row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px}
+.compare-box .row .k{color:var(--muted)}
+.compare-box .row .v{font-weight:600}
+.slider-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.slider-row input[type=range]{width:160px}
+.muted{color:var(--muted)}
+.hint{font-size:11px;color:var(--muted);margin-top:6px;padding:8px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--accent)}
+.badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600}
+.badge-danger{background:#fee2e2;color:#991b1b}
+.badge-warn{background:#fef3c7;color:#92400e}
+.badge-info{background:#dbeafe;color:#1e40af}
+.footer{text-align:center;padding:20px;color:var(--muted);font-size:11px}
+.channel-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:900px){.channel-summary{grid-template-columns:1fr}}
+.channel-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:4px solid}
+.channel-card.asa{border-top-color:var(--asa)}
+.channel-card.gkw{border-top-color:var(--gkw)}
+.channel-card.pmax{border-top-color:var(--pmax)}
+.channel-card .h{font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.channel-card .big{font-size:20px;font-weight:700}
+.channel-card .sm{font-size:12px;color:var(--muted);margin-top:3px}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <h1>📊 廣告投放儀表板</h1>
+    <div class="subtitle">ASA · Google Keyword · Google Pmax（已排除 META）</div>
+  </div>
+  <label class="upload-zone" id="uploadZone">
+    <span style="font-size:18px">📁</span>
+    <div>
+      <div style="font-weight:600">上傳當日 raw data</div>
+      <div class="file-info" id="fileInfo">拖曳或點擊選擇 .xlsx 檔</div>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+  </label>
+  <button class="btn btn-ghost" id="btnClear" style="margin-left:auto">清除資料</button>
+  <button class="btn" id="btnDemo">載入示範資料</button>
+</header>
+
+<nav class="tabs" id="tabs">
+  <div class="tab active" data-view="overview">📈 總覽</div>
+  <div class="tab" data-view="ASA">ASA</div>
+  <div class="tab" data-view="Google KW">Google Keyword</div>
+  <div class="tab" data-view="Google Pmax">Google Pmax</div>
+</nav>
+
+<section class="controls">
+  <div class="control-group">
+    <label>快捷</label>
+    <div class="chips" id="presetChips">
+      <div class="chip" data-preset="today">今日</div>
+      <div class="chip" data-preset="yesterday">昨日</div>
+      <div class="chip" data-preset="last7">近 7 天</div>
+      <div class="chip" data-preset="thisWeek">本週</div>
+      <div class="chip" data-preset="lastWeek">上週</div>
+      <div class="chip" data-preset="thisMonth">本月</div>
+      <div class="chip" data-preset="lastMonth">上月</div>
+      <div class="chip active" data-preset="all">全部</div>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>起</label>
+    <input type="date" id="dateStart">
+    <label>迄</label>
+    <input type="date" id="dateEnd">
+  </div>
+  <div class="control-group">
+    <label>粒度</label>
+    <div class="chips" id="granChips">
+      <div class="chip active" data-gran="day">日</div>
+      <div class="chip" data-gran="week">週</div>
+      <div class="chip" data-gran="month">月</div>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>比較</label>
+    <div class="chips" id="compareChips">
+      <div class="chip active" data-compare="prev">對比上一期</div>
+      <div class="chip" data-compare="wow">WoW</div>
+      <div class="chip" data-compare="mom">MoM</div>
+      <div class="chip" data-compare="none">無</div>
+    </div>
+  </div>
+</section>
+
+<main class="main" id="main">
+  <div class="empty" id="emptyState">
+    <h3>尚未載入資料</h3>
+    <p>請點選上方「上傳當日 raw data」或直接拖曳 Excel 檔進頁面</p>
+    <p class="muted">支援欄位：Date / 廣告活動 / 廣告群組 / 廣告關鍵字 / 曝光 / 點擊 / 花費 / 進件數 / 完開數</p>
+    <p style="margin-top:16px"><button class="btn btn-primary" id="btnDemo2">載入示範資料（4/1–4/20）</button></p>
+  </div>
+  <div id="content" style="display:none"></div>
+</main>
+
+<div class="footer">每日上傳今天最新 raw data ➜ 自動重算 · 所有資料僅保存在你瀏覽器 localStorage</div>
+
+<script>
+/* ============================================================
+   設定：預算（台幣，月預算）
+   ============================================================ */
+const BUDGETS = {
+  'ASA': {
+    total: 350000,
+    buckets: { '台股': 300000, '美股': 50000 }
+  },
+  'Google KW': {
+    total: 600000,
+    buckets: { '品牌字': 350000, '郵局字': 235000, '投資入門字': 15000 }
+  },
+  'Google Pmax': {
+    total: 300000,
+    buckets: { '常態 PMAX': 300000 }
+  }
+};
+
+const CHANNEL_TAG = { 'ASA': 'tag-asa', 'Google KW': 'tag-gkw', 'Google Pmax': 'tag-pmax' };
+const INEFFECTIVE_THRESHOLD = 500; // NT$
+
+/* ============================================================
+   狀態
+   ============================================================ */
+let rawRows = [];          // 所有列（unified schema）
+let fileName = '';
+let lastUploadTs = '';
+let currentView = 'overview';
+let currentRange = { start: null, end: null, preset: 'all' };
+let currentGran = 'day';
+let currentCompare = 'prev';
+let ineffectiveThreshold = INEFFECTIVE_THRESHOLD;
+let chartInstances = {};
+
+/* ============================================================
+   Campaign → 子預算 bucket 對應
+   ============================================================ */
+function bucketOf(channel, campaign){
+  const c = String(campaign||'');
+  if (channel === 'ASA'){
+    if (/台股/.test(c)) return '台股';
+    if (/美股/.test(c)) return '美股';
+    return '其他';
+  }
+  if (channel === 'Google KW'){
+    if (/品牌字/.test(c)) return '品牌字';
+    if (/郵局字/.test(c)) return '郵局字';
+    if (/投資入門字/.test(c)) return '投資入門字';
+    return '其他';
+  }
+  if (channel === 'Google Pmax') return '常態 PMAX';
+  return '其他';
+}
+
+/* ============================================================
+   日期解析工具
+   ============================================================ */
+function parseDateCell(v){
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  if (typeof v === 'number'){
+    // Excel serial
+    const d = XLSX.SSF.parse_date_code(v);
+    if (d) return new Date(d.y, d.m-1, d.d);
+    return null;
+  }
+  if (typeof v === 'string'){
+    const s = v.trim();
+    // MM/DD/YYYY or M/D/YYYY
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return new Date(+m[3], +m[1]-1, +m[2]);
+    // YYYY-MM-DD
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+    const t = new Date(s);
+    if (!isNaN(t)) return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  }
+  return null;
+}
+
+// ASA sheet 日期修正：Excel 把 "04/XX/2026"（XX=01-12）誤讀成 XX 月 4 日
+// 規則：若為 Date 物件且 day===4 且 month 介於 1-12，視為 4 月 XX 日
+function parseAsaDateCell(v){
+  const d = parseDateCell(v);
+  if (!d) return null;
+  // 只修正字面上來自 Date 物件的 mm/dd 混淆
+  if (v instanceof Date){
+    const yr = v.getFullYear(), mo = v.getMonth()+1, dy = v.getDate();
+    if (yr === 2026 && dy === 4 && mo >= 1 && mo <= 12){
+      return new Date(2026, 3, mo); // 2026-04-MO
+    }
+  }
+  return d;
+}
+
+function fmtDate(d){
+  if (!d) return '';
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function fmtDateShort(d){
+  if (!d) return '';
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function diffDays(a,b){return Math.round((b-a)/86400000)}
+function startOfWeek(d){ // 週一為一週起始
+  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const w=(x.getDay()+6)%7; // 0=Mon
+  x.setDate(x.getDate()-w);
+  return x;
+}
+function endOfWeek(d){return addDays(startOfWeek(d),6)}
+function startOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1)}
+function endOfMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0)}
+
+/* ============================================================
+   數字格式
+   ============================================================ */
+function num(n){
+  if (n == null || isNaN(n)) return '—';
+  if (Math.abs(n) >= 1000) return Math.round(n).toLocaleString();
+  if (Math.abs(n) >= 10) return n.toFixed(0);
+  return n.toFixed(2);
+}
+function money(n){
+  if (n == null || isNaN(n)) return '—';
+  return 'NT$' + Math.round(n).toLocaleString();
+}
+function pct(n, digits=1){
+  if (n == null || isNaN(n)) return '—';
+  return (n*100).toFixed(digits) + '%';
+}
+function delta(cur, prev){
+  if (prev == null || prev === 0 || isNaN(prev)) return {text:'—', dir:'neu'};
+  const r = (cur - prev) / Math.abs(prev);
+  const sign = r>0?'+':'';
+  return { text: sign + (r*100).toFixed(1) + '%', dir: r>0?'up':(r<0?'down':'neu'), value:r };
+}
+
+/* ============================================================
+   Excel 解析（SheetJS）→ unified rows
+   ============================================================ */
+function parseWorkbook(wb){
+  const rows = [];
+  const sheetNames = wb.SheetNames;
+
+  // 分辨 sheet 所屬 channel（忽略 META）
+  for (const name of sheetNames){
+    const lower = name.toLowerCase();
+    if (lower.includes('meta')) continue;
+
+    let channel = null;
+    if (/asa/i.test(name)) channel = 'ASA';
+    else if (/pmax/i.test(name) || /p\s*max/i.test(name)) channel = 'Google Pmax';
+    else if (/google.*kw|keyword|關鍵字/i.test(name) || name === 'Google KW') channel = 'Google KW';
+    else continue; // 不認識的 sheet 略過
+
+    const ws = wb.Sheets[name];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: 0, raw: true, cellDates: true });
+    for (const r of json){
+      const dateRaw = r['Date'] ?? r['date'] ?? r['日期'];
+      const d = channel === 'ASA' ? parseAsaDateCell(dateRaw) : parseDateCell(dateRaw);
+      if (!d) continue;
+
+      const campaign = r['廣告活動'] || r['Campaign'] || r['Campaign Name'] || '';
+      const group = r['廣告群組'] || r['Ad Group'] || '';
+      const keyword = r['廣告關鍵字'] || r['Keyword'] || '';
+      const impressions = +(r['曝光'] || r['Impressions'] || 0) || 0;
+      const clicks = +(r['點擊'] || r['Clicks'] || 0) || 0;
+      const downloads = +(r['下載數'] || r['Downloads'] || 0) || 0;
+      const costTwd = +(r['花費（台幣）'] || r['花費'] || r['Cost'] || 0) || 0;
+      const costUsd = +(r['花費（美金）'] || 0) || 0;
+      const inquiries = +(r['進件數'] || r['Inquiries'] || 0) || 0;
+      const conversions = +(r['完開數'] || r['Conversions'] || 0) || 0;
+
+      rows.push({
+        date: d, dateStr: fmtDate(d), channel, campaign, group, keyword,
+        bucket: bucketOf(channel, campaign),
+        impressions, clicks, downloads, costTwd, costUsd, inquiries, conversions
+      });
+    }
+  }
+  return rows;
+}
+
+/* ============================================================
+   聚合與篩選
+   ============================================================ */
+function filterRange(rows, start, end){
+  if (!start && !end) return rows.slice();
+  return rows.filter(r => {
+    if (start && r.date < start) return false;
+    if (end && r.date > end) return false;
+    return true;
+  });
+}
+
+function aggregate(rows){
+  return rows.reduce((a,r)=>{
+    a.impressions += r.impressions;
+    a.clicks += r.clicks;
+    a.downloads += r.downloads;
+    a.costTwd += r.costTwd;
+    a.inquiries += r.inquiries;
+    a.conversions += r.conversions;
+    return a;
+  }, {impressions:0, clicks:0, downloads:0, costTwd:0, inquiries:0, conversions:0});
+}
+
+function metricsFrom(agg){
+  return {
+    ...agg,
+    ctr: agg.clicks / agg.impressions,
+    cpc: agg.costTwd / agg.clicks,
+    cpa_inquiry: agg.inquiries>0 ? agg.costTwd / agg.inquiries : null,
+    cpa_conv: agg.conversions>0 ? agg.costTwd / agg.conversions : null,
+    inquiry_rate: agg.clicks>0 ? agg.inquiries / agg.clicks : null,
+    conv_rate: agg.clicks>0 ? agg.conversions / agg.clicks : null,
+    conv_from_inquiry: agg.inquiries>0 ? agg.conversions / agg.inquiries : null
+  };
+}
+
+function groupBy(rows, keyFn){
+  const m = new Map();
+  for (const r of rows){
+    const k = keyFn(r);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(r);
+  }
+  return m;
+}
+
+function rangeOfRows(rows){
+  if (!rows.length) return {min:null,max:null};
+  let mn = rows[0].date, mx = rows[0].date;
+  for (const r of rows){ if (r.date<mn) mn=r.date; if (r.date>mx) mx=r.date; }
+  return {min:mn, max:mx};
+}
+
+/* ============================================================
+   預設日期範圍計算
+   ============================================================ */
+function getPresetRange(preset, dataRange){
+  const today = new Date(); today.setHours(0,0,0,0);
+  // 資料最新日當作 "今天" 基準，避免使用者電腦時間不一致
+  const refToday = dataRange.max || today;
+  const rt = new Date(refToday.getFullYear(), refToday.getMonth(), refToday.getDate());
+
+  switch(preset){
+    case 'today': return {start: rt, end: rt};
+    case 'yesterday': { const y=addDays(rt,-1); return {start:y,end:y}; }
+    case 'last7': return {start: addDays(rt,-6), end: rt};
+    case 'thisWeek': return {start: startOfWeek(rt), end: rt};
+    case 'lastWeek': { const s=addDays(startOfWeek(rt),-7); return {start:s, end:addDays(s,6)}; }
+    case 'thisMonth': return {start: startOfMonth(rt), end: rt};
+    case 'lastMonth': { const s=startOfMonth(addDays(startOfMonth(rt),-1)); return {start:s, end:endOfMonth(s)}; }
+    case 'all': return {start: dataRange.min, end: dataRange.max};
+  }
+  return {start: dataRange.min, end: dataRange.max};
+}
+
+function getCompareRange(range, mode, dataRange){
+  if (mode === 'none' || !range.start || !range.end) return null;
+  const len = diffDays(range.start, range.end) + 1;
+  if (mode === 'wow') return { start: addDays(range.start, -7), end: addDays(range.end, -7), label: '上週同區間' };
+  if (mode === 'mom'){
+    const s = new Date(range.start); s.setMonth(s.getMonth()-1);
+    const e = new Date(range.end); e.setMonth(e.getMonth()-1);
+    return { start: s, end: e, label: '上月同區間' };
+  }
+  // prev: 往前推同天數
+  return { start: addDays(range.start, -len), end: addDays(range.start, -1), label: `前 ${len} 天` };
+}
+
+/* ============================================================
+   時間序列依粒度分組
+   ============================================================ */
+function bucketKey(d, gran){
+  if (gran === 'day') return fmtDate(d);
+  if (gran === 'week'){ const s=startOfWeek(d); return fmtDate(s); }
+  if (gran === 'month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return fmtDate(d);
+}
+function bucketLabel(k, gran){
+  if (gran === 'day'){
+    const [y,m,dd]=k.split('-');return `${+m}/${+dd}`;
+  }
+  if (gran === 'week'){
+    const [y,m,dd]=k.split('-'); const s=new Date(+y,+m-1,+dd); const e=addDays(s,6);
+    return `${+m}/${+dd}–${e.getMonth()+1}/${e.getDate()}`;
+  }
+  if (gran === 'month'){
+    return k;
+  }
+  return k;
+}
+
+function timeSeries(rows, gran){
+  const m = groupBy(rows, r => bucketKey(r.date, gran));
+  const keys = Array.from(m.keys()).sort();
+  return keys.map(k=>{
+    const agg = aggregate(m.get(k));
+    return { key:k, label: bucketLabel(k, gran), ...agg };
+  });
+}
+
+/* ============================================================
+   預算進度
+   ============================================================ */
+function daysInMonth(d){ return endOfMonth(d).getDate(); }
+
+function budgetStatus(channel, rows, refDate){
+  const cfg = BUDGETS[channel];
+  if (!cfg) return null;
+  // 僅看 refDate 所在月份的花費
+  const monthStart = startOfMonth(refDate);
+  const monthEnd = endOfMonth(refDate);
+  const inMonth = rows.filter(r => r.channel===channel && r.date>=monthStart && r.date<=monthEnd);
+  const totalSpent = inMonth.reduce((s,r)=>s+r.costTwd,0);
+  const daysElapsed = diffDays(monthStart, refDate) + 1;
+  const daysTotal = daysInMonth(refDate);
+  const pace = daysElapsed / daysTotal;
+
+  // 每個 bucket
+  const bucketRows = {};
+  for (const r of inMonth){
+    const b = r.bucket;
+    if (!bucketRows[b]) bucketRows[b] = 0;
+    bucketRows[b] += r.costTwd;
+  }
+  const buckets = Object.entries(cfg.buckets).map(([name, budget]) => ({
+    name, budget, spent: bucketRows[name]||0
+  }));
+  return { channel, cfg, totalSpent, pace, daysElapsed, daysTotal, monthLabel: `${refDate.getFullYear()}/${refDate.getMonth()+1}`, buckets };
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+function destroyCharts(){
+  for (const k in chartInstances){ chartInstances[k]?.destroy(); }
+  chartInstances = {};
+}
+
+function render(){
+  if (!rawRows.length){
+    document.getElementById('emptyState').style.display='';
+    document.getElementById('content').style.display='none';
+    return;
+  }
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('content').style.display='';
+  destroyCharts();
+
+  const dataRange = rangeOfRows(rawRows);
+  // 套用 preset 或 manual range
+  let range = { start: currentRange.start, end: currentRange.end };
+  if (currentRange.preset && currentRange.preset !== 'custom'){
+    range = getPresetRange(currentRange.preset, dataRange);
+    document.getElementById('dateStart').value = fmtDate(range.start);
+    document.getElementById('dateEnd').value = fmtDate(range.end);
+  }
+  if (!range.start) range.start = dataRange.min;
+  if (!range.end) range.end = dataRange.max;
+
+  const compareRange = getCompareRange(range, currentCompare, dataRange);
+
+  // 篩選
+  const filtered = filterRange(rawRows, range.start, range.end);
+  const compared = compareRange ? filterRange(rawRows, compareRange.start, compareRange.end) : null;
+
+  const channel = currentView === 'overview' ? null : currentView;
+  const scoped = channel ? filtered.filter(r=>r.channel===channel) : filtered;
+  const scopedCmp = compared ? (channel ? compared.filter(r=>r.channel===channel) : compared) : null;
+
+  let html = '';
+  html += renderHeader(range, compareRange, dataRange, channel);
+
+  if (currentView === 'overview'){
+    html += renderOverview(filtered, scopedCmp, range, dataRange);
+  } else {
+    html += renderChannel(channel, scoped, scopedCmp, range, compareRange, dataRange);
+  }
+
+  document.getElementById('content').innerHTML = html;
+
+  // 掛上事件與畫圖
+  if (currentView === 'overview'){
+    drawOverviewCharts(filtered);
+  } else {
+    drawChannelCharts(channel, scoped);
+  }
+  attachTableSort();
+  attachThresholdSlider();
+}
+
+function renderHeader(range, compareRange, dataRange, channel){
+  let h = `<div class="panel" style="margin-bottom:14px;padding:14px 18px">
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+      <div>
+        <div style="font-size:12px;color:var(--muted)">檢視區間</div>
+        <div style="font-size:15px;font-weight:600">${fmtDate(range.start)} – ${fmtDate(range.end)} <span class="muted" style="font-weight:400">（${diffDays(range.start,range.end)+1} 天）</span></div>
+      </div>`;
+  if (compareRange){
+    h += `<div>
+        <div style="font-size:12px;color:var(--muted)">比較區間 · ${compareRange.label}</div>
+        <div style="font-size:14px;font-weight:500" class="muted">${fmtDate(compareRange.start)} – ${fmtDate(compareRange.end)}</div>
+      </div>`;
+  }
+  h += `<div>
+        <div style="font-size:12px;color:var(--muted)">資料範圍</div>
+        <div style="font-size:13px" class="muted">${fmtDate(dataRange.min)} – ${fmtDate(dataRange.max)}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted)">檔案</div>
+        <div style="font-size:13px" class="muted">${fileName || '—'} · ${lastUploadTs || '—'}</div>
+      </div>
+    </div>
+  </div>`;
+  return h;
+}
+
+/* ---------- Overview ---------- */
+function renderOverview(rows, cmpRows, range, dataRange){
+  const all = metricsFrom(aggregate(rows));
+  const allCmp = cmpRows ? metricsFrom(aggregate(cmpRows)) : null;
+
+  // 總覽 KPI
+  let h = '<div class="panel"><h2>關鍵指標 <span class="sub">所有非 META 渠道</span></h2>' + kpiGrid(all, allCmp) + '</div>';
+
+  // 各渠道摘要卡
+  h += '<div class="channel-summary">';
+  for (const ch of ['ASA', 'Google KW', 'Google Pmax']){
+    const chRows = rows.filter(r=>r.channel===ch);
+    const chAgg = aggregate(chRows);
+    const cls = ch==='ASA'?'asa':(ch==='Google KW'?'gkw':'pmax');
+    const bs = budgetStatus(ch, rawRows, dataRange.max);
+    const pctBudget = bs.cfg.total>0 ? bs.totalSpent/bs.cfg.total : 0;
+    h += `<div class="channel-card ${cls}">
+      <div class="h">${ch}</div>
+      <div class="big">${money(chAgg.costTwd)}</div>
+      <div class="sm">曝光 ${num(chAgg.impressions)} · 點擊 ${num(chAgg.clicks)} · 進件 ${num(chAgg.inquiries)} · 完開 ${num(chAgg.conversions)}</div>
+      <div class="sm" style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span>本月預算進度</span><span>${pct(pctBudget)} · ${money(bs.totalSpent)}/${money(bs.cfg.total)}</span></div>
+        <div class="bar" style="height:8px;margin-top:4px">
+          <div class="bar-fill ${pctBudget>1?'over':(pctBudget>bs.pace+0.05?'warn':'')}" style="width:${Math.min(pctBudget*100,100).toFixed(1)}%"></div>
+          <div class="bar-pace" style="left:${(bs.pace*100).toFixed(1)}%"></div>
+        </div>
+      </div>
+    </div>`;
+  }
+  h += '</div>';
+
+  // 各渠道預算進度（詳細）
+  h += '<div class="panel"><h2>預算進度 <span class="sub">以 '+ (dataRange.max?`${dataRange.max.getFullYear()}/${dataRange.max.getMonth()+1}`:'') +' 月 · 截至最新資料日</span></h2>';
+  h += renderBudgetPanels(['ASA','Google KW','Google Pmax'], dataRange.max);
+  h += '</div>';
+
+  // 時間序列
+  h += `<div class="panel"><h2>花費 & 進件 時間序列 <span class="sub">依粒度：${granLabel()}</span></h2>
+    <div class="chart-wrap"><canvas id="chartOverTime"></canvas></div>
+  </div>`;
+
+  // 渠道比例
+  h += `<div class="two-col">
+    <div class="panel"><h2>各渠道花費佔比</h2><div class="chart-wrap small"><canvas id="chartShare"></canvas></div></div>
+    <div class="panel"><h2>各渠道轉換表現</h2>${channelPerfTable(rows)}</div>
+  </div>`;
+
+  return h;
+}
+
+function channelPerfTable(rows){
+  const chs = ['ASA','Google KW','Google Pmax'];
+  let h = '<div class="table-wrap compact"><table class="data"><thead><tr>';
+  for (const c of ['渠道','花費','曝光','點擊','CTR','進件','CPA(進件)','完開','CPA(完開)','點擊→進件']) h += `<th>${c}</th>`;
+  h += '</tr></thead><tbody>';
+  for (const ch of chs){
+    const m = metricsFrom(aggregate(rows.filter(r=>r.channel===ch)));
+    h += `<tr>
+      <td><span class="tag ${CHANNEL_TAG[ch]}">${ch}</span></td>
+      <td>${money(m.costTwd)}</td>
+      <td>${num(m.impressions)}</td>
+      <td>${num(m.clicks)}</td>
+      <td>${pct(m.ctr)}</td>
+      <td>${num(m.inquiries)}</td>
+      <td>${m.cpa_inquiry!=null?money(m.cpa_inquiry):'—'}</td>
+      <td>${num(m.conversions)}</td>
+      <td>${m.cpa_conv!=null?money(m.cpa_conv):'—'}</td>
+      <td>${pct(m.inquiry_rate)}</td>
+    </tr>`;
+  }
+  h += '</tbody></table></div>';
+  return h;
+}
+
+/* ---------- Channel ---------- */
+function renderChannel(channel, rows, cmpRows, range, compareRange, dataRange){
+  const m = metricsFrom(aggregate(rows));
+  const mc = cmpRows ? metricsFrom(aggregate(cmpRows)) : null;
+
+  let h = `<div class="panel"><h2>關鍵指標 <span class="sub"><span class="tag ${CHANNEL_TAG[channel]}">${channel}</span></span></h2>${kpiGrid(m, mc)}</div>`;
+
+  // 預算
+  h += `<div class="panel"><h2>預算進度 <span class="sub">${dataRange.max.getFullYear()}/${dataRange.max.getMonth()+1} 月 · 已過 ${Math.round(100*(diffDays(startOfMonth(dataRange.max),dataRange.max)+1)/daysInMonth(dataRange.max))}% 時間</span></h2>`;
+  h += renderBudgetPanels([channel], dataRange.max);
+  h += '</div>';
+
+  // WoW / 比較
+  if (compareRange){
+    h += renderComparePanel(channel, rows, cmpRows, range, compareRange);
+  }
+
+  // 時間序列
+  h += `<div class="panel"><h2>花費 & 進件/完開 時間序列 <span class="sub">${granLabel()}</span></h2>
+    <div class="chart-wrap"><canvas id="chartTime"></canvas></div>
+  </div>`;
+
+  // 活動 / 群組 表現
+  h += `<div class="two-col">
+    <div class="panel"><h2>廣告活動表現</h2>${campaignTable(rows)}</div>`;
+  if (channel !== 'Google Pmax'){
+    h += `<div class="panel"><h2>廣告群組表現</h2>${groupTable(rows)}</div>`;
+  } else {
+    h += `<div class="panel"><h2>每日明細</h2>${dailyTable(rows)}</div>`;
+  }
+  h += '</div>';
+
+  // 關鍵字表現（只有 ASA / Google KW）
+  if (channel !== 'Google Pmax'){
+    h += `<div class="panel"><h2>關鍵字表現 <span class="sub">TOP 30（依花費）</span></h2>${keywordTable(rows, 30)}</div>`;
+    h += renderIneffectivePanel(rows, channel);
+  }
+
+  return h;
+}
+
+function kpiGrid(m, mc){
+  const items = [
+    ['花費', money(m.costTwd), null, mc?delta(m.costTwd, mc.costTwd):null, '台幣'],
+    ['曝光', num(m.impressions), null, mc?delta(m.impressions, mc.impressions):null, ''],
+    ['點擊', num(m.clicks), `CTR ${pct(m.ctr)}`, mc?delta(m.clicks, mc.clicks):null, ''],
+    ['進件數', num(m.inquiries), m.cpa_inquiry!=null?`CPA ${money(m.cpa_inquiry)}`:'CPA —', mc?delta(m.inquiries, mc.inquiries):null, ''],
+    ['完開數', num(m.conversions), m.cpa_conv!=null?`CPA ${money(m.cpa_conv)}`:'CPA —', mc?delta(m.conversions, mc.conversions):null, ''],
+    ['點擊→進件率', pct(m.inquiry_rate), m.clicks>0?`${num(m.inquiries)}/${num(m.clicks)}`:'—', mc?delta(m.inquiry_rate||0, mc.inquiry_rate||0):null, ''],
+  ];
+  let h = '<div class="kpi-grid">';
+  for (const [label, val, sub, d, unit] of items){
+    h += `<div class="kpi">
+      <div class="label">${label}${unit?` <span class="muted">(${unit})</span>`:''}</div>
+      <div class="value">${val}</div>
+      ${sub?`<div class="sub">${sub}</div>`:''}
+      ${d?`<span class="delta ${d.dir}">${d.text}</span>`:''}
+    </div>`;
+  }
+  h += '</div>';
+  return h;
+}
+
+function renderBudgetPanels(channels, refDate){
+  let h = '<div class="budget-list">';
+  for (const ch of channels){
+    const bs = budgetStatus(ch, rawRows, refDate);
+    const totPct = bs.cfg.total>0 ? bs.totalSpent/bs.cfg.total : 0;
+    const overPace = totPct > bs.pace + 0.05;
+    // 總列
+    h += `<div class="budget-row">
+      <div class="budget-label">
+        ${ch} 總預算
+        <span class="sub">月 · ${bs.monthLabel}</span>
+      </div>
+      <div class="bar">
+        <div class="bar-fill ${totPct>1?'over':(overPace?'warn':'')}" style="width:${Math.min(totPct*100,100).toFixed(1)}%"></div>
+        <div class="bar-pace" style="left:${Math.min(bs.pace*100,100).toFixed(1)}%" title="月份進度 ${pct(bs.pace)}"></div>
+        <div class="bar-text">${pct(totPct)} ${overPace?'⚠ 超前':''}</div>
+      </div>
+      <div class="budget-right">
+        <span class="big">${money(bs.totalSpent)} / ${money(bs.cfg.total)}</span>
+        ${money(Math.max(bs.cfg.total - bs.totalSpent,0))} 剩餘 · 已過 ${pct(bs.pace)}
+      </div>
+    </div>`;
+    // Bucket 列
+    for (const b of bs.buckets){
+      const p = b.budget>0 ? b.spent/b.budget : 0;
+      const over = p > bs.pace + 0.05;
+      h += `<div class="budget-row" style="padding-left:24px">
+        <div class="budget-label" style="font-weight:400;color:var(--muted)">— ${b.name}</div>
+        <div class="bar" style="height:16px">
+          <div class="bar-fill ${p>1?'over':(over?'warn':'')}" style="width:${Math.min(p*100,100).toFixed(1)}%"></div>
+          <div class="bar-pace" style="left:${Math.min(bs.pace*100,100).toFixed(1)}%"></div>
+          <div class="bar-text" style="font-size:10px">${pct(p)}</div>
+        </div>
+        <div class="budget-right">
+          <span class="big">${money(b.spent)} / ${money(b.budget)}</span>
+        </div>
+      </div>`;
+    }
+  }
+  h += '</div>';
+  h += `<div class="hint">⚫ 黑點＝本月時間進度（月份已過 %）。預算填充若超過黑點 5% 以上標記為 <b>超前</b>（橘色），>100% 為 <b>超支</b>（紅色）。</div>`;
+  return h;
+}
+
+function renderComparePanel(channel, rows, cmpRows, range, compareRange){
+  const m = metricsFrom(aggregate(rows));
+  const mc = metricsFrom(aggregate(cmpRows));
+  const keys = [
+    ['花費', 'costTwd', money],
+    ['曝光', 'impressions', num],
+    ['點擊', 'clicks', num],
+    ['CTR', 'ctr', pct],
+    ['進件數', 'inquiries', num],
+    ['完開數', 'conversions', num],
+    ['CPA(進件)', 'cpa_inquiry', (v)=>v!=null?money(v):'—'],
+    ['點擊→進件率', 'inquiry_rate', (v)=>v!=null?pct(v):'—'],
+  ];
+  let h = `<div class="panel"><h2>${compareRange.label} 比較 · WoW / 期間對比</h2><div class="compare-grid">`;
+  h += `<div class="compare-box"><div class="title">本期 · ${fmtDate(range.start)} – ${fmtDate(range.end)}</div>`;
+  for (const [k, key, f] of keys) h += `<div class="row"><span class="k">${k}</span><span class="v">${f(m[key])}</span></div>`;
+  h += `</div>`;
+  h += `<div class="compare-box"><div class="title">比較 · ${fmtDate(compareRange.start)} – ${fmtDate(compareRange.end)}</div>`;
+  for (const [k, key, f] of keys) h += `<div class="row"><span class="k">${k}</span><span class="v">${f(mc[key])}</span></div>`;
+  h += `</div>`;
+  h += `<div class="compare-box"><div class="title">變動（本期 vs 比較期）</div>`;
+  for (const [k, key] of keys){
+    const d = delta(m[key]||0, mc[key]||0);
+    h += `<div class="row"><span class="k">${k}</span><span class="delta ${d.dir}">${d.text}</span></div>`;
+  }
+  h += `</div></div></div>`;
+  return h;
+}
+
+function campaignTable(rows){
+  const m = groupBy(rows, r=>r.campaign);
+  const data = Array.from(m.entries()).map(([name, rs])=>{
+    const mm = metricsFrom(aggregate(rs));
+    return { name, bucket: rs[0]?.bucket, ...mm };
+  }).sort((a,b)=>b.costTwd-a.costTwd);
+  return dataTable(data, [
+    ['廣告活動', 'name', v=>v, true],
+    ['分組', 'bucket', v=>`<span class="tag tag-bucket">${v}</span>`, true],
+    ['花費', 'costTwd', money],
+    ['曝光', 'impressions', num],
+    ['點擊', 'clicks', num],
+    ['CTR', 'ctr', pct],
+    ['進件', 'inquiries', num],
+    ['CPA(進件)', 'cpa_inquiry', v=>v!=null?money(v):'—'],
+    ['完開', 'conversions', num],
+    ['CPA(完開)', 'cpa_conv', v=>v!=null?money(v):'—'],
+    ['進件率', 'inquiry_rate', v=>v!=null?pct(v):'—'],
+  ]);
+}
+
+function groupTable(rows){
+  const m = groupBy(rows, r=>r.group);
+  const data = Array.from(m.entries()).map(([name, rs])=>{
+    const mm = metricsFrom(aggregate(rs));
+    return { name, ...mm };
+  }).sort((a,b)=>b.costTwd-a.costTwd);
+  return dataTable(data, [
+    ['廣告群組', 'name', v=>v||'(未指定)', true],
+    ['花費', 'costTwd', money],
+    ['點擊', 'clicks', num],
+    ['CTR', 'ctr', pct],
+    ['進件', 'inquiries', num],
+    ['CPA(進件)', 'cpa_inquiry', v=>v!=null?money(v):'—'],
+    ['進件率', 'inquiry_rate', v=>v!=null?pct(v):'—'],
+  ]);
+}
+
+function keywordTable(rows, top){
+  const m = groupBy(rows, r=>r.keyword || '(無)');
+  const data = Array.from(m.entries()).map(([name, rs])=>{
+    const mm = metricsFrom(aggregate(rs));
+    return { name, campaign: rs[0]?.campaign, ...mm };
+  }).sort((a,b)=>b.costTwd-a.costTwd).slice(0, top||30);
+  return dataTable(data, [
+    ['關鍵字', 'name', v=>v, true],
+    ['活動', 'campaign', v=>v||'—', true],
+    ['花費', 'costTwd', money],
+    ['點擊', 'clicks', num],
+    ['CTR', 'ctr', pct],
+    ['進件', 'inquiries', num],
+    ['CPA(進件)', 'cpa_inquiry', v=>v!=null?money(v):'—'],
+    ['進件率', 'inquiry_rate', v=>v!=null?pct(v):'—'],
+  ]);
+}
+
+function dailyTable(rows){
+  const m = groupBy(rows, r=>fmtDate(r.date));
+  const data = Array.from(m.entries()).map(([d, rs])=>{
+    const mm = metricsFrom(aggregate(rs));
+    return { name:d, ...mm };
+  }).sort((a,b)=>a.name.localeCompare(b.name));
+  return dataTable(data, [
+    ['日期', 'name', v=>v, true],
+    ['花費', 'costTwd', money],
+    ['曝光', 'impressions', num],
+    ['點擊', 'clicks', num],
+    ['CTR', 'ctr', pct],
+    ['進件', 'inquiries', num],
+    ['完開', 'conversions', num],
+  ]);
+}
+
+function renderIneffectivePanel(rows, channel){
+  const h = `<div class="panel">
+    <h2>⚠ 無效關鍵字偵測 <span class="sub">花費 &gt; 門檻 且 進件 = 0</span></h2>
+    <div class="slider-row" style="margin-bottom:10px">
+      花費門檻：
+      <input type="range" id="threshSlider" min="100" max="5000" step="100" value="${ineffectiveThreshold}">
+      <b id="threshLabel">NT$${ineffectiveThreshold.toLocaleString()}</b>
+      <span class="muted">（落在此區間且進件=0 的關鍵字視為無效／低效）</span>
+    </div>
+    <div id="ineffectiveBox">${ineffectiveListHtml(rows, ineffectiveThreshold)}</div>
+  </div>`;
+  return h;
+}
+
+function ineffectiveListHtml(rows, threshold){
+  const m = groupBy(rows.filter(r=>r.keyword), r=>r.keyword);
+  const data = Array.from(m.entries()).map(([kw, rs])=>{
+    const agg = aggregate(rs);
+    return {
+      name: kw, campaign: rs[0]?.campaign, group: rs[0]?.group,
+      costTwd: agg.costTwd, clicks: agg.clicks, impressions: agg.impressions,
+      inquiries: agg.inquiries, conversions: agg.conversions
+    };
+  }).filter(k=>k.costTwd > threshold && k.inquiries === 0)
+    .sort((a,b)=>b.costTwd-a.costTwd);
+
+  if (!data.length){
+    return `<div class="muted" style="padding:16px">✓ 目前無關鍵字花費 &gt; NT$${threshold.toLocaleString()} 且進件=0（換句話說，沒有明顯浪費預算的關鍵字）。</div>`;
+  }
+  const totalWaste = data.reduce((s,r)=>s+r.costTwd,0);
+  let h = `<div style="margin-bottom:10px"><span class="badge badge-danger">${data.length} 個無效關鍵字</span> <span class="muted">累積浪費 ${money(totalWaste)}</span></div>`;
+  h += dataTable(data, [
+    ['關鍵字', 'name', v=>v, true],
+    ['活動', 'campaign', v=>v||'—', true],
+    ['群組', 'group', v=>v||'—', true],
+    ['花費', 'costTwd', money],
+    ['點擊', 'clicks', num],
+    ['曝光', 'impressions', num],
+    ['進件', 'inquiries', v=>v===0?'<b style="color:#ef4444">0</b>':num(v)],
+  ]);
+  return h;
+}
+
+/* ---------- 通用表格 ---------- */
+function dataTable(data, cols){
+  let h = '<div class="table-wrap"><table class="data"><thead><tr>';
+  for (const c of cols) h += `<th data-key="${c[1]}" data-text="${c[3]?1:0}">${c[0]}</th>`;
+  h += '</tr></thead><tbody>';
+  for (const r of data){
+    h += '<tr>';
+    for (const c of cols){
+      const v = r[c[1]];
+      h += `<td>${c[2](v)}</td>`;
+    }
+    h += '</tr>';
+  }
+  h += '</tbody></table></div>';
+  return h;
+}
+
+function attachTableSort(){
+  document.querySelectorAll('table.data').forEach(tbl=>{
+    tbl.querySelectorAll('th').forEach((th, idx)=>{
+      th.addEventListener('click', ()=>{
+        const asc = !th.classList.contains('sort-asc');
+        tbl.querySelectorAll('th').forEach(x=>x.classList.remove('sort-asc','sort-desc'));
+        th.classList.add(asc?'sort-asc':'sort-desc');
+        const tbody = tbl.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const isText = th.getAttribute('data-text') === '1';
+        rows.sort((a,b)=>{
+          const av = a.children[idx].innerText;
+          const bv = b.children[idx].innerText;
+          if (isText) return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+          const af = parseFloat(av.replace(/[^\d.\-]/g,'')) || 0;
+          const bf = parseFloat(bv.replace(/[^\d.\-]/g,'')) || 0;
+          return asc ? af-bf : bf-af;
+        });
+        rows.forEach(r=>tbody.appendChild(r));
+      });
+    });
+  });
+}
+
+function attachThresholdSlider(){
+  const s = document.getElementById('threshSlider');
+  if (!s) return;
+  const lab = document.getElementById('threshLabel');
+  const box = document.getElementById('ineffectiveBox');
+  s.addEventListener('input', e=>{
+    ineffectiveThreshold = +e.target.value;
+    lab.innerText = 'NT$' + ineffectiveThreshold.toLocaleString();
+    // 當前 scope
+    const dataRange = rangeOfRows(rawRows);
+    let range = { start: currentRange.start, end: currentRange.end };
+    if (currentRange.preset && currentRange.preset !== 'custom') range = getPresetRange(currentRange.preset, dataRange);
+    if (!range.start) range.start = dataRange.min;
+    if (!range.end) range.end = dataRange.max;
+    const filtered = filterRange(rawRows, range.start, range.end);
+    const scoped = currentView==='overview' ? filtered : filtered.filter(r=>r.channel===currentView);
+    box.innerHTML = ineffectiveListHtml(scoped, ineffectiveThreshold);
+    attachTableSort();
+  });
+}
+
+function granLabel(){ return currentGran==='day'?'日':(currentGran==='week'?'週':'月'); }
+
+/* ---------- 圖表 ---------- */
+function drawOverviewCharts(rows){
+  const ts = timeSeries(rows, currentGran);
+  // 時間序列（堆疊花費 + 進件）
+  const asaData = timeSeries(rows.filter(r=>r.channel==='ASA'), currentGran);
+  const gkwData = timeSeries(rows.filter(r=>r.channel==='Google KW'), currentGran);
+  const pmxData = timeSeries(rows.filter(r=>r.channel==='Google Pmax'), currentGran);
+
+  const labels = ts.map(t=>t.label);
+  const pick = (arr, label) => {
+    const map = new Map(arr.map(x=>[x.label, x.costTwd]));
+    return labels.map(l=>map.get(l)||0);
+  };
+  const cvMap = new Map(ts.map(x=>[x.label, x.inquiries]));
+  const cvConv = new Map(ts.map(x=>[x.label, x.conversions]));
+
+  const ctx = document.getElementById('chartOverTime').getContext('2d');
+  chartInstances.time = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { type:'bar', label:'ASA', data:pick(asaData,'a'), backgroundColor:'rgba(139,92,246,.85)', stack:'cost', yAxisID:'y' },
+        { type:'bar', label:'Google KW', data:pick(gkwData,'g'), backgroundColor:'rgba(37,99,235,.85)', stack:'cost', yAxisID:'y' },
+        { type:'bar', label:'Google Pmax', data:pick(pmxData,'p'), backgroundColor:'rgba(16,185,129,.85)', stack:'cost', yAxisID:'y' },
+        { type:'line', label:'進件數', data:labels.map(l=>cvMap.get(l)||0), borderColor:'#f59e0b', backgroundColor:'#f59e0b', yAxisID:'y1', tension:.3, fill:false, pointRadius:3 },
+        { type:'line', label:'完開數', data:labels.map(l=>cvConv.get(l)||0), borderColor:'#ef4444', backgroundColor:'#ef4444', yAxisID:'y1', tension:.3, fill:false, pointRadius:3 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        y:{ stacked:true, title:{display:true, text:'花費（NT$）'}, ticks:{callback:v=>v.toLocaleString()} },
+        y1:{ stacked:false, position:'right', grid:{drawOnChartArea:false}, title:{display:true, text:'進件/完開'} }
+      },
+      plugins:{ legend:{position:'top'} }
+    }
+  });
+
+  // 渠道花費比例
+  const totals = ['ASA','Google KW','Google Pmax'].map(ch => rows.filter(r=>r.channel===ch).reduce((s,r)=>s+r.costTwd,0));
+  const ctx2 = document.getElementById('chartShare').getContext('2d');
+  chartInstances.share = new Chart(ctx2, {
+    type:'doughnut',
+    data:{
+      labels:['ASA','Google KW','Google Pmax'],
+      datasets:[{ data: totals, backgroundColor:['#8b5cf6','#2563eb','#10b981'], borderWidth:0 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'right'}, tooltip:{ callbacks:{ label:(c)=>`${c.label}: ${money(c.parsed)} (${pct(c.parsed/totals.reduce((a,b)=>a+b,0))})` } } } }
+  });
+}
+
+function drawChannelCharts(channel, rows){
+  const ts = timeSeries(rows, currentGran);
+  const labels = ts.map(t=>t.label);
+  const ctx = document.getElementById('chartTime').getContext('2d');
+  chartInstances.time = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { type:'bar', label:'花費 (NT$)', data:ts.map(t=>t.costTwd), backgroundColor:channel==='ASA'?'rgba(139,92,246,.85)':(channel==='Google KW'?'rgba(37,99,235,.85)':'rgba(16,185,129,.85)'), yAxisID:'y' },
+        { type:'line', label:'進件數', data:ts.map(t=>t.inquiries), borderColor:'#f59e0b', backgroundColor:'#f59e0b', yAxisID:'y1', tension:.3, fill:false, pointRadius:3 },
+        { type:'line', label:'完開數', data:ts.map(t=>t.conversions), borderColor:'#ef4444', backgroundColor:'#ef4444', yAxisID:'y1', tension:.3, fill:false, pointRadius:3 },
+        { type:'line', label:'點擊', data:ts.map(t=>t.clicks), borderColor:'#64748b', borderDash:[4,3], yAxisID:'y1', tension:.3, fill:false, pointRadius:2 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        y:{ title:{display:true, text:'花費（NT$）'}, ticks:{callback:v=>v.toLocaleString()} },
+        y1:{ position:'right', grid:{drawOnChartArea:false}, title:{display:true, text:'進件/完開/點擊'} }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   上傳與解析
+   ============================================================ */
+function handleFile(file){
+  fileName = file.name;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array', cellDates:true });
+      const rows = parseWorkbook(wb);
+      if (!rows.length){
+        alert('解析失敗或檔案內沒有認得的 sheet（ASA / Google KW / Google Pmax）');
+        return;
+      }
+      rawRows = rows;
+      lastUploadTs = new Date().toLocaleString('zh-TW', { hour12:false });
+      document.getElementById('fileInfo').innerHTML = `<b>${fileName}</b> · ${rows.length.toLocaleString()} 列 · ${lastUploadTs}`;
+      // 存 localStorage（僅存 rows + 檔名）
+      try{
+        const lite = rows.map(r=>({ ...r, date: r.dateStr }));
+        localStorage.setItem('adDashData', JSON.stringify({ rows: lite, fileName, ts: lastUploadTs }));
+      }catch(_){}
+      render();
+    }catch(err){
+      alert('解析錯誤：' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ============================================================
+   載入 localStorage
+   ============================================================ */
+function loadFromStorage(){
+  try{
+    const raw = localStorage.getItem('adDashData');
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    rawRows = obj.rows.map(r=>({ ...r, date: new Date(r.date) }));
+    fileName = obj.fileName;
+    lastUploadTs = obj.ts;
+    document.getElementById('fileInfo').innerHTML = `<b>${fileName}</b> · ${rawRows.length.toLocaleString()} 列 · ${lastUploadTs}`;
+    return true;
+  }catch(_){ return false; }
+}
+
+/* ============================================================
+   事件
+   ============================================================ */
+// 上傳
+const fi = document.getElementById('fileInput');
+const uz = document.getElementById('uploadZone');
+fi.addEventListener('change', e=>{ if (e.target.files[0]) handleFile(e.target.files[0]); });
+uz.addEventListener('dragover', e=>{ e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', ()=>uz.classList.remove('drag'));
+uz.addEventListener('drop', e=>{
+  e.preventDefault(); uz.classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.addEventListener('dragover', e=>e.preventDefault());
+document.addEventListener('drop', e=>e.preventDefault());
+
+// 清除
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  if (!confirm('清除已載入的資料？')) return;
+  rawRows=[]; fileName=''; lastUploadTs='';
+  localStorage.removeItem('adDashData');
+  document.getElementById('fileInfo').innerText='拖曳或點擊選擇 .xlsx 檔';
+  render();
+});
+
+// Tabs
+document.getElementById('tabs').addEventListener('click', e=>{
+  const t = e.target.closest('.tab'); if (!t) return;
+  document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  currentView = t.dataset.view;
+  render();
+});
+
+// 快捷 chips
+document.getElementById('presetChips').addEventListener('click', e=>{
+  const c = e.target.closest('.chip'); if (!c) return;
+  document.querySelectorAll('#presetChips .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  currentRange = { preset: c.dataset.preset };
+  render();
+});
+// 手動日期
+document.getElementById('dateStart').addEventListener('change', e=>{
+  currentRange = { preset:'custom', start:new Date(e.target.value), end: currentRange.end || new Date(document.getElementById('dateEnd').value) };
+  document.querySelectorAll('#presetChips .chip').forEach(x=>x.classList.remove('active'));
+  render();
+});
+document.getElementById('dateEnd').addEventListener('change', e=>{
+  currentRange = { preset:'custom', start: currentRange.start || new Date(document.getElementById('dateStart').value), end: new Date(e.target.value) };
+  document.querySelectorAll('#presetChips .chip').forEach(x=>x.classList.remove('active'));
+  render();
+});
+// 粒度
+document.getElementById('granChips').addEventListener('click', e=>{
+  const c = e.target.closest('.chip'); if (!c) return;
+  document.querySelectorAll('#granChips .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  currentGran = c.dataset.gran;
+  render();
+});
+// 比較
+document.getElementById('compareChips').addEventListener('click', e=>{
+  const c = e.target.closest('.chip'); if (!c) return;
+  document.querySelectorAll('#compareChips .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  currentCompare = c.dataset.compare;
+  render();
+});
+// 示範
+document.getElementById('btnDemo').addEventListener('click', loadDemo);
+document.getElementById('btnDemo2')?.addEventListener('click', loadDemo);
+
+function loadDemo(){
+  // 生成 4/1-4/20 示範資料
+  const rows = [];
+  const d0 = new Date(2026,3,1);
+  const demos = [
+    {ch:'ASA',cmp:'競品字(台股)',kw:['鉅亨','群益贏家pro','台新證券','永豐金證券']},
+    {ch:'ASA',cmp:'品牌字(台股)',kw:['口袋證券','口袋台股']},
+    {ch:'ASA',cmp:'看盤軟體字(美股)',kw:['美股通','tradingview','yahoo財經美股','富途牛牛']},
+    {ch:'Google KW',cmp:'MKUS01_關鍵字_0916_品牌字',kw:['口袋證券','口袋台股','口袋證券 定期定額','口袋app']},
+    {ch:'Google KW',cmp:'MKADCH CHBG12_關鍵字_1015_郵局字',kw:['郵局 開戶','郵局 股票','郵局證券戶','郵局 證券']},
+    {ch:'Google KW',cmp:'MKADGO CHBG01/02_關鍵字_1218_投資入門字',kw:['定期定額','怎麼買ETF','怎麼買0050']},
+    {ch:'Google Pmax',cmp:'常態_PMAX_20251204 #3',kw:['']},
+  ];
+  for (let i=0;i<20;i++){
+    const d = addDays(d0,i);
+    for (const e of demos){
+      for (const k of e.kw){
+        const impr = Math.round(50 + Math.random()*2000);
+        const clk = Math.round(impr * (0.02 + Math.random()*0.05));
+        const cost = Math.round(clk * (5 + Math.random()*40));
+        const inq = Math.random()<0.15 ? Math.round(Math.random()*3) : 0;
+        const conv = inq>0 && Math.random()<0.4 ? 1 : 0;
+        rows.push({
+          date:d, dateStr:fmtDate(d), channel:e.ch, campaign:e.cmp, group:e.cmp, keyword:k,
+          bucket: bucketOf(e.ch, e.cmp),
+          impressions:impr, clicks:clk, downloads: e.ch==='ASA' ? Math.round(clk*0.5) : 0,
+          costTwd:cost, costUsd: e.ch==='ASA' ? cost/30 : 0,
+          inquiries:inq, conversions:conv
+        });
+      }
+    }
+  }
+  rawRows = rows;
+  fileName='（示範資料）';
+  lastUploadTs = new Date().toLocaleString('zh-TW', {hour12:false});
+  document.getElementById('fileInfo').innerHTML = `<b>${fileName}</b> · ${rows.length.toLocaleString()} 列`;
+  render();
+}
+
+// 初始化
+if (loadFromStorage()) render();
+else render();
+</script>
+</body>
+</html>
